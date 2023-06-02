@@ -142,14 +142,6 @@ class MembershipBaseModel(models.Model):
     class Meta:
         abstract = True
 
-class ActiveMemberManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(
-            membership_start_date__isnull=False,
-            membership_expiry_date__isnull=False,
-            membership_start_date__lte=timezone.now().date(),
-            membership_expiry_date__gte=timezone.now().date()
-        )
 
 # Member model is used to store Association Approved Member details and has provision to login
 class Member(MembershipBaseModel):
@@ -161,12 +153,10 @@ class Member(MembershipBaseModel):
         'User', on_delete=models.PROTECT, limit_choices_to={'is_customer': True}, related_name='customer')
     member_email_verified = models.BooleanField(default=False)
     member_mobile_verified = models.BooleanField(default=False)
-    aadhar_no = models.CharField(max_length=12, default=None, unique=True, error_messages={
+    aadhar_no = models.CharField(max_length=18, default=None, unique=True, error_messages={
         "unique": "Aadhar number already in use"})
     membership_start_date = models.DateField(default=None, null=True)
     membership_expiry_date = models.DateField(default=None, null=True)
-    objects = models.Manager()
-    active_members = ActiveMemberManager()
 
     def __str__(self) -> str:
         return 'Member - ' + str(self.pk)

@@ -2,7 +2,7 @@ from django.urls import path
 from knox.views import LogoutView
 
 from accounts.views import (AdminCRUDAPI, AdminChange, AdminChangePassword, AdminInfo, AdminMenuDetails, AdminMenuFetch,
-                            AdminMenuList, AdminOTPCreate, AdminOTPVerify, AdminResetPassword, AdminSignInView, ChangesLogAPI, CheckAcess, CheckTokenAPI, MemberSubscriptionView, MembershipTypesAdminView, MembershipsViewEdit, ActiveSubscription, NewUsers, TotalSubscription, ActiveMembers,YettoExpire)
+                            AdminMenuList, AdminOTPCreate, AdminOTPVerify, AdminResetPassword, AdminSignInView, ChangesLogAPI, CheckAcess, CheckTokenAPI)
 
 
 urlpatterns = [

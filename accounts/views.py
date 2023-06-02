@@ -700,227 +700,205 @@ class ChangesLogAPI(generics.GenericAPIView):
 
 
 # Manage Membership request - membership which hasn't been approved till now
-class MembershipsViewEdit(generics.GenericAPIView):
-    permission_classes = [isAdmin]
-    queryset = MembershipRequest.objects.filter(membership_is_approved=False)
-    serializer_class = MembershipRequestSerializer
+# class MembershipsViewEdit(generics.GenericAPIView):
+#     permission_classes = [isAdmin]
+#     queryset = MembershipRequest.objects.filter(membership_is_approved=False)
+#     serializer_class = MembershipRequestSerializer
 
-    def get(self, request, *args, **kwargs):
-        if 'pk' in kwargs:
-            # individual membership fetch
-            return Response(self.get_serializer(self.get_object()).data)
-        return Response((self.get_serializer(self.get_queryset(), many=True)).data)
+#     def get(self, request, *args, **kwargs):
+#         if 'pk' in kwargs:
+#             # individual membership fetch
+#             return Response(self.get_serializer(self.get_object()).data)
+#         return Response((self.get_serializer(self.get_queryset(), many=True)).data)
 
-    def put(self, request, *args, **kwargs):
-        if 'pk' in kwargs:
-            # Approving membership
-            if 'membership_is_approved' in request.data:
-                if request.data.get('membership_is_approved'):
-                    obj = self.get_object()
+#     def put(self, request, *args, **kwargs):
+#         if 'pk' in kwargs:
+#             # Approving membership
+#             if 'membership_is_approved' in request.data:
+#                 if request.data.get('membership_is_approved'):
+#                     obj = self.get_object()
 
-                    # Create User
-                    username = obj.member_email.split(
-                        '@')[0] + (obj.member_mobile)[6:]
+#                     # Create User
+#                     username = obj.member_email.split(
+#                         '@')[0] + (obj.member_mobile)[6:]
 
-                    if (User.objects.filter(email=obj.member_email).exists()):
-                        return Response({"error_detail": ["Email ID already in use."]}, status=status.HTTP_400_BAD_REQUEST)
-                    if (Member.objects.filter(member_mobile=obj.member_mobile).exists()):
-                        return Response({"error_detail": ["Mobile Number already in use."]}, status=status.HTTP_400_BAD_REQUEST)
-                    if (Member.objects.filter(aadhar_no=obj.aadhar_no).exists()):
-                        return Response({"error_detail": ["Aadhar Number already in use."]}, status=status.HTTP_400_BAD_REQUEST)
-                    # CHECK UNIQUE ?   ->  # check aadhar no,firm_name,firm_contact_number,firm vat_no,firm_tin_no,firm_pan_no,gst_no,
+#                     if (User.objects.filter(email=obj.member_email).exists()):
+#                         return Response({"error_detail": ["Email ID already in use."]}, status=status.HTTP_400_BAD_REQUEST)
+#                     # if (Member.objects.filter(member_mobile=obj.member_mobile).exists()):
+#                     #     return Response({"error_detail": ["Mobile Number already in use."]}, status=status.HTTP_400_BAD_REQUEST)
+#                     # if (Member.objects.filter(aadhar_no=obj.aadhar_no).exists()):
+#                         return Response({"error_detail": ["Aadhar Number already in use."]}, status=status.HTTP_400_BAD_REQUEST)
+#                     # CHECK UNIQUE ?   ->  # check aadhar no,firm_name,firm_contact_number,firm vat_no,firm_tin_no,firm_pan_no,gst_no,
 
-                    # Check if username already exists and make a new username
-                    while User.objects.filter(username=username).exists():
-                        username += str(randint(1, 99))
-                    # plain_passwd = ''.join(choices(
-                    #     string.ascii_lowercase + string.digits, k=8))
-                    # print(obj.aadhar_no[8:], (obj.member_mobile)[6:])
-                    plain_passwd = obj.aadhar_no[8:] + obj.member_email.split(
-                        '@')[0] + (obj.member_mobile)[6:]
-                    # print('pass===>', plain_passwd)
-                    passwd = make_password(plain_passwd)
-                    user = User.objects.create(username=username,
-                                               is_customer=1, email=obj.member_email, password=passwd)
-                    # add to member
-                    data = model_to_dict(obj)
-                    data['user'] = user
-                    data['firm_district_id'] = data['firm_district']
-                    data['membership_type_id'] = data['membership_type']
-                    del data['firm_district']
-                    del data['membership_type']
-                    del data['id_membership_req']
-                    del data['membership_is_approved']
-                    del data['member_email']
-                    member = Member.objects.create(**data)
+#                     # Check if username already exists and make a new username
+#                     while User.objects.filter(username=username).exists():
+#                         username += str(randint(1, 99))
+#                     # plain_passwd = ''.join(choices(
+#                     #     string.ascii_lowercase + string.digits, k=8))
+#                     # print(obj.aadhar_no[8:], (obj.member_mobile)[6:])
+#                     plain_passwd = obj.aadhar_no[8:] + obj.member_email.split(
+#                         '@')[0] + (obj.member_mobile)[6:]
+#                     # print('pass===>', plain_passwd)
+#                     passwd = make_password(plain_passwd)
+#                     user = User.objects.create(username=username,
+#                                                is_customer=1, email=obj.member_email, password=passwd)
+#                     # add to member
+#                     data = model_to_dict(obj)
+#                     data['user'] = user
+#                     data['firm_district_id'] = data['firm_district']
+#                     data['membership_type_id'] = data['membership_type']
+#                     del data['firm_district']
+#                     del data['membership_type']
+#                     del data['id_membership_req']
+#                     del data['membership_is_approved']
+#                     del data['member_email']
+#                     member = Member.objects.create(**data)
 
-                    # delete membership object
-                    obj.delete()
+#                     # delete membership object
+#                     obj.delete()
 
-                    # send_mail
-                    # password is last 4 digits of adhar and last 4 digits of mobile number
+#                     # send_mail
+#                     # password is last 4 digits of adhar and last 4 digits of mobile number
 
-                    html_message = render_to_string('member_account_creation.html', {
-                        "name": member.full_name, "username": user.username})
-                    send_mail(subject='Membership Request Accepted', message='Welcome .. pass is {}'.format(plain_passwd),
-                              html_message=html_message,
-                              from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[user.email])
-                    return Response({"message": "Member Accepted, Member account created"}, status=status.HTTP_200_OK)
+#                     html_message = render_to_string('member_account_creation.html', {
+#                         "name": member.full_name, "username": user.username})
+#                     send_mail(subject='Membership Request Accepted', message='Welcome .. pass is {}'.format(plain_passwd),
+#                               html_message=html_message,
+#                               from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[user.email])
+#                     return Response({"message": "Member Accepted, Member account created"}, status=status.HTTP_200_OK)
 
-            # Rejecting Membership
-            if 'reject_membership' in request.data:
-                # if 'reject_reason' in request.data:
-                if request.data.get('reject_membership'):
-                    obj = self.get_object()
-                    # if no protection delete directly
-                    obj.member_photo.delete()
-                    obj.aadhar_image.delete()
-                    obj.firm_vat_image.delete()
-                    obj.firm_tin_image.delete()
-                    obj.firm_pan_image.delete()
-                    obj.trade_license_image.delete()
-                    obj.visiting_card_image.delete()
-                    obj.resolution_image.delete()
-                    obj.delete()
+#             # Rejecting Membership
+#             if 'reject_membership' in request.data:
+#                 # if 'reject_reason' in request.data:
+#                 if request.data.get('reject_membership'):
+#                     obj = self.get_object()
+#                     # if no protection delete directly
+#                     obj.member_photo.delete()
+#                     obj.aadhar_image.delete()
+#                     obj.firm_vat_image.delete()
+#                     obj.firm_tin_image.delete()
+#                     obj.firm_pan_image.delete()
+#                     obj.trade_license_image.delete()
+#                     obj.visiting_card_image.delete()
+#                     obj.resolution_image.delete()
+#                     obj.delete()
 
-                    # if any(
-                    #     filter_.exists() for filter_ in [
-                    #         User.objects.filter(Q(email=obj.member_email) | Q(
-                    #             member__member_mobile=obj.member_mobile)),
-                    #         Member.objects.filter(aadhar_no=obj.aadhar_no)
-                    #     ]
-                    # ):
-                    #     pass
+#                     # if any(
+#                     #     filter_.exists() for filter_ in [
+#                     #         User.objects.filter(Q(email=obj.member_email) | Q(
+#                     #             member__member_mobile=obj.member_mobile)),
+#                     #         Member.objects.filter(aadhar_no=obj.aadhar_no)
+#                     #     ]
+#                     # ):
+#                     #     pass
 
-                    if any(
-                        filter_.exists() for filter_ in [
-                            User.objects.filter(email=obj.member_email),
-                            Member.objects.filter(
-                                member_mobile=obj.member_mobile),
-                            Member.objects.filter(aadhar_no=obj.aadhar_no)
-                        ]
-                    ):
-                        pass
+#                     if any(
+#                         filter_.exists() for filter_ in [
+#                             User.objects.filter(email=obj.member_email),
+#                             Member.objects.filter(
+#                                 member_mobile=obj.member_mobile),
+#                             Member.objects.filter(aadhar_no=obj.aadhar_no)
+#                         ]
+#                     ):
+#                         pass
 
-                    else:
-                        html_message = render_to_string('member_rejection_template.html', {
-                            "name": obj.full_name})
-                        send_mail(subject='Membership Request Rejected', message='Your Membership request is rejected',
-                                  html_message=html_message,
-                                  from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[obj.member_email])
-                #
-                return Response({"success": True, "message": "Membership request rejected"}, status=status.HTTP_200_OK)
-                # return Response({"error_detail": ["Please provide rejection reason."]}, status=status.HTTP_400_BAD_REQUEST)
-            return Response(status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+#                     else:
+#                         html_message = render_to_string('member_rejection_template.html', {
+#                             "name": obj.full_name})
+#                         send_mail(subject='Membership Request Rejected', message='Your Membership request is rejected',
+#                                   html_message=html_message,
+#                                   from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[obj.member_email])
+#                 #
+#                 return Response({"success": True, "message": "Membership request rejected"}, status=status.HTTP_200_OK)
+#                 # return Response({"error_detail": ["Please provide rejection reason."]}, status=status.HTTP_400_BAD_REQUEST)
+#             return Response(status=status.HTTP_200_OK)
+#         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    # def delete(self, request, *args, **kwargs):
-    #     # delete instance
-    #     if 'pk' in kwargs:
-    #         obj = self.get_object()
-    #         try:
-    #             if (hasattr(obj, 'customer')):
-    #                 raise ProtectedError(
-    #                     'Cannot delete. Membership details are in use', obj)
-    #             obj.member_photo.delete()
-    #             obj.aadhar_image.delete()
-    #             obj.firm_vat_image.delete()
-    #             obj.firm_tin_image.delete()
-    #             obj.firm_pan_image.delete()
-    #             obj.trade_license_image.delete()
-    #             obj.visiting_card_image.delete()
-    #             obj.resolution_image.delete()
-    #             obj.delete()
-    #         except ProtectedError:
-    #             return Response({"error_detail": ["Cannot delete. Membership details are in use"]}, status=status.HTTP_400_BAD_REQUEST)
-    #         return Response(status=status.HTTP_204_NO_CONTENT)
-    #     return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-
-class MemberSubscriptionView(generics.GenericAPIView):
-    permission_classes = [isAdmin]
-    queryset = Member.objects.all()
-
-    def get(self, request, *args, **kwargs):
-        if 'pk' in kwargs:
-            member = self.get_object()
-            membership = {"member_id": member.pk, 'member_name': member.full_name, "firm_name": member.firm_name,
-                          "membership_active": member.check_is_active(),
-                          "membership_start_date": member.membership_start_date,
-                          "membership_expiry_date": member.membership_expiry_date,
-                          "membership_type": {"id": member.membership_type.id, "name": member.membership_type.name,
-                                              "price": member.membership_type.price,
-                                              "duration_months": member.membership_type.duration_months},
-                          }
-            return Response(membership)
-        members = self.get_queryset()
-        output = [{"member_id": member.pk, 'member_name': member.full_name, "firm_name": member.firm_name,
-                   "membership_active": member.check_is_active(),
-                   "membership_start_date": member.membership_start_date,
-                   "membership_expiry_date": member.membership_expiry_date,
-                   } for member in members]
-        return Response(sorted(output, key=lambda k: (k['membership_expiry_date'] is not None, k['membership_expiry_date']), reverse=True))
-
-    def put(self, request, *args, **kwargs):
-        if 'pk' in kwargs:
-            if 'renew_subscription' and 'membership_type' in request.data:
-                member = self.get_object()
-                member.membership_type_id = request.data['membership_type']
-                new_expiry = MembershipType.objects.get(id=request.data['membership_type']).get_expiry_date(
-                    member.membership_expiry_date)
-                if member.membership_start_date == None:
-                    member.membership_start_date = timezone.now().date()
-                member.membership_expiry_date = new_expiry
-                member.save()
-                return Response({"success": True, "message": "Membership Renewed"})
-            if 'end_subscription' in request.data:
-                member = self.get_object()
-                member.membership_start_date = None
-                member.membership_expiry_date = None
-                member.save()
-                return Response({"success": True, "message": "Membership Ended"})
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+#     # def delete(self, request, *args, **kwargs):
+#     #     # delete instance
+#     #     if 'pk' in kwargs:
+#     #         obj = self.get_object()
+#     #         try:
+#     #             if (hasattr(obj, 'customer')):
+#     #                 raise ProtectedError(
+#     #                     'Cannot delete. Membership details are in use', obj)
+#     #             obj.member_photo.delete()
+#     #             obj.aadhar_image.delete()
+#     #             obj.firm_vat_image.delete()
+#     #             obj.firm_tin_image.delete()
+#     #             obj.firm_pan_image.delete()
+#     #             obj.trade_license_image.delete()
+#     #             obj.visiting_card_image.delete()
+#     #             obj.resolution_image.delete()
+#     #             obj.delete()
+#     #         except ProtectedError:
+#     #             return Response({"error_detail": ["Cannot delete. Membership details are in use"]}, status=status.HTTP_400_BAD_REQUEST)
+#     #         return Response(status=status.HTTP_204_NO_CONTENT)
+#     #     return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-# Get Membership Types
-class MembershipTypesAdminView(generics.GenericAPIView):
-    permission_classes = [isAdmin]
+# class MemberSubscriptionView(generics.GenericAPIView):
+#     permission_classes = [isAdmin]
+#     queryset = Member.objects.all()
 
-    def get(self, request, *args, **kwargs):
-        return Response(MembershipType.objects.all().values())
+#     def get(self, request, *args, **kwargs):
+#         if 'pk' in kwargs:
+#             member = self.get_object()
+#             membership = {"member_id": member.pk, 'member_name': member.full_name, "firm_name": member.firm_name,
+#                           "membership_active": member.check_is_active(),
+#                           "membership_start_date": member.membership_start_date,
+#                           "membership_expiry_date": member.membership_expiry_date,
+#                           "membership_type": {"id": member.membership_type.id, "name": member.membership_type.name,
+#                                               "price": member.membership_type.price,
+#                                               "duration_months": member.membership_type.duration_months},
+#                           }
+#             return Response(membership)
+#         members = self.get_queryset()
+#         output = [{"member_id": member.pk, 'member_name': member.full_name, "firm_name": member.firm_name,
+#                    "membership_active": member.check_is_active(),
+#                    "membership_start_date": member.membership_start_date,
+#                    "membership_expiry_date": member.membership_expiry_date,
+#                    } for member in members]
+#         return Response(sorted(output, key=lambda k: (k['membership_expiry_date'] is not None, k['membership_expiry_date']), reverse=True))
 
-class ActiveSubscription(generics.GenericAPIView):
-    permission_classes = [isAdmin]
-    queryset = Member.active_members.count()
+#     def put(self, request, *args, **kwargs):
+#         if 'pk' in kwargs:
+#             if 'renew_subscription' and 'membership_type' in request.data:
+#                 member = self.get_object()
+#                 member.membership_type_id = request.data['membership_type']
+#                 new_expiry = MembershipType.objects.get(id=request.data['membership_type']).get_expiry_date(
+#                     member.membership_expiry_date)
+#                 if member.membership_start_date == None:
+#                     member.membership_start_date = timezone.now().date()
+#                 member.membership_expiry_date = new_expiry
+#                 member.save()
+#                 return Response({"success": True, "message": "Membership Renewed"})
+#             if 'end_subscription' in request.data:
+#                 member = self.get_object()
+#                 member.membership_start_date = None
+#                 member.membership_expiry_date = None
+#                 member.save()
+#                 return Response({"success": True, "message": "Membership Ended"})
+#         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    def get(self, request, *args, **kwargs):
-        members = Member.active_members.count()
-        output = members
-        return Response(output)
+
+# # Get Membership Types
+# class MembershipTypesAdminView(generics.GenericAPIView):
+#     permission_classes = [isAdmin]
+
+#     def get(self, request, *args, **kwargs):
+#         return Response(MembershipType.objects.all().values())
     
-class ActiveMembers(generics.GenericAPIView):
-    permission_classes = [isAdmin]
-    queryset = Member.active_members.all().order_by('-membership_start_date')
+# class TotalSubscription(generics.GenericAPIView):
+#     permission_classes = [isAdmin]
+#     queryset = Member.objects.count()
 
-    def get(self, request, *args, **kwargs):
-        members = self.get_queryset()
-        output = [{"member_id": member.pk, 'member_name': member.full_name, "firm_name": member.firm_name,
-                   "membership_active": member.check_is_active(),
-                   "membership_start_date": member.membership_start_date,
-                   "membership_expiry_date": member.membership_expiry_date,
-                   } for member in members]
-        return Response(sorted(output, key=lambda k: (k['membership_expiry_date'] is not None, k['membership_expiry_date'])))
-    
-class TotalSubscription(generics.GenericAPIView):
-    permission_classes = [isAdmin]
-    queryset = Member.objects.count()
+#     def get(self, request, *args, **kwargs):
+#         members = Member.objects.count()
+#         output = members
+#         return Response(output)
 
-    def get(self, request, *args, **kwargs):
-        members = Member.objects.count()
-        output = members
-        return Response(output)
-
-class NewUsers(generics.ListAPIView):
+# class NewUsers(generics.ListAPIView):
     permission_classes = [isAdmin]
     queryset = Member.objects.all().order_by('-member_id')
 
@@ -933,16 +911,3 @@ class NewUsers(generics.ListAPIView):
                   
                    } for member in members]
         return Response(output)
-    
-class YettoExpire(generics.ListAPIView):
-    permission_classes = [isAdmin]
-    queryset = Member.active_members.all().order_by('-membership_expiry_date')
-
-    def get(self, request, *args, **kwargs):
-        members = self.get_queryset()
-        output = [{"member_id": member.pk, 'member_name': member.full_name, "firm_name": member.firm_name,
-                   "membership_active": member.check_is_active(),
-                   "membership_start_date": member.membership_start_date,
-                   "membership_expiry_date": member.membership_expiry_date,
-                   } for member in members]
-        return Response(sorted(output, key=lambda k: (k['membership_expiry_date'] is not None, k['membership_expiry_date']), reverse=False))

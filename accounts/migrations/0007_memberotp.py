@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('creation_time', models.DateTimeField(default=django.utils.timezone.now)),
                 ('expiry', models.DateTimeField()),
                 ('otp_for', models.CharField(choices=[('0', 'Password Reset OTP')], max_length=1)),
-                ('member', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='otp_set', to='accounts.member')),
+                
             ],
             options={
                 'db_table': 'member_otp',
